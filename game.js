@@ -223,19 +223,19 @@ var BuildingTier = {
 		surface.fill();    
 		surface.closePath();
 
-		surface.fillStyle = 'rgb(0,0,0)';
-		for (var i = 0; i <= this.cells_x; i++) {
-			for (var j = 0; j <= this.cells_y; j++) {
+		surface.strokeStyle = 'rgb(255,0,0)';
+		for (var i = 0; i < this.cells_x; i++) {
+			for (var j = 0; j < this.cells_y; j++) {
 				// grid line bottom
 				surface.beginPath();
-				surface.moveTo(x_start + (i * Game.cell_size), y_start + (j * Game.cell_size) - 1);
-				surface.lineTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) - 1);
+				surface.moveTo(x_start + (i * Game.cell_size), y_start + (j * Game.cell_size) + Game.cell_size);
+				surface.lineTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) + Game.cell_size);
 				surface.closePath();
 				surface.stroke();
 
 				surface.beginPath();
-				surface.moveTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) - 1);
-				surface.lineTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) - 1 - Game.cell_size);
+				surface.moveTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size));
+				surface.lineTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) + Game.cell_size);
 				surface.closePath();
 				surface.stroke();
 			}
