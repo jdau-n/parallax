@@ -4,6 +4,11 @@ var RNGRules = {
 	weight_defs: {
 		'tier_count': {1:3,2:3,3:6},
 
+		// 1: no change
+		// 2: +1
+		// 3: -1
+		'window_modify': {1:6,2:1,3:1},
+
 		// 1: even, 2: top quarter, 3: bottom quarter
 		'tier_vertical_ratio_type': {1:2,2:1,3:4},
 
@@ -11,8 +16,28 @@ var RNGRules = {
 		// 2: 60% of last tier
 		'tier_horizontal_ratio_type': {1:2,2:1},
 
-		'window_type': {1:2,2:1,3:1}
+		// 1: seperate single cells
+		// 2: doubles
+		// 3: continuous
+		// 4: quads
+		// 5: quads, joined lights
+		'window_join_type': {1:4,2:2,3:2,4:1,5:1},
+
+		// 1: uniform
+		// 2: single division
+		// 3: centred partition
+		'partition_type': {1:4,2:0,3:0}
 	},
+
+	range_defs: {
+		'l1_window_size': [2,6],
+		'l2_window_size': [2,5],
+		'l3_window_size': [1,5],
+		'l4_window_size': [1,4],
+		'l5_window_size': [1,2],
+	},
+
+
 
 	weight_tables: {},
 
@@ -49,13 +74,19 @@ var RNGRules = {
 		var def = this.weight_defs[rule_set];
 		var table = [];
 
-		for (i in def) {
-			for (j = 0; j < def[i]*2; j++) {
+		for (var i in def) {
+			for (var j = 0; j < def[i]*2; j++) {
 				table.push(i);
 			}
 		}
 
 		return table;
+	},
+
+	rng_rule: function(rule_name) {
+		if (!(rule_name in this.range_defs)) { console.log("WARNING: rng_rule called with nonexistent def: "+rule_name); }
+
+		return Math.floor(Math.random() * (this.range_defs[rule_name][1] - this.range_defs[rule_name][0])) + this.range_defs[rule_name][0];
 	},
 
 	rng: function(rng_floor, rng_ceil) {
@@ -67,7 +98,9 @@ var RNGRules = {
 
 var Game = {
 
-	cell_size: 20,
+	debug_grid: false,
+
+	cell_size: 8,
 
 	layers: [],
 	display_canvas: null,
@@ -78,7 +111,7 @@ var Game = {
 		this.display_surface = document.getElementById('main-canvas').getContext('2d');
 
 		test_building = Building;
-		test_building.generate(12,18);
+		test_building.generate(35,50);
 		test_building.render(this.display_surface, 0, 0);
 	},
 
@@ -100,8 +133,10 @@ var Building = {
 	tier_vertical_ratio_type: 0,
 	tier_horizontal_ratio_type: 0,
 
-	tier_window_type: 0,
-	tier_inner_margin: 0,
+	tier_window_join_type: 0,
+	tier_window_size_x: 0,
+	tier_window_size_y: 0,
+	tier_partition_type: 0,
 
 	generate: function(cells_x, cells_y) {
 
@@ -112,7 +147,12 @@ var Building = {
 		this.tier_vertical_ratio_type = RNGRules.select('tier_vertical_ratio_type');
 		this.tier_horizontal_ratio_type = RNGRules.select('tier_horizontal_ratio_type');
 
-		this.tier_window_type = RNGRules.select('window_type');
+		// detail rules are set at a building level
+		// there is a chance they are changed per tier, but generally they should be similar
+		this.tier_window_join_type = RNGRules.select('window_join_type');
+		this.tier_window_size_x = RNGRules.rng_rule('l1_window_size');
+		this.tier_window_size_y = RNGRules.rng_rule('l1_window_size');
+		this.tier_partition_type = RNGRules.select('partition_type');
 
 		var available_vertical_cells = cells_y;
 		var prev_size = this.size_x_cells;
@@ -130,7 +170,7 @@ var Building = {
 					if (this.tier_horizontal_ratio_type == 1) {
 						h_size = Math.floor(prev_size * 0.8);
 					} else if (this.tier_horizontal_ratio_type == 2) {
-						h_size = Math.floor(prev_size * 0.6);
+						h_size = Math.floor(prev_size * 0.7);
 					}
 				} else {
 					h_size = this.size_x_cells;
@@ -164,6 +204,7 @@ var Building = {
 			}
 
 			new_tier.generate(h_size,v_size,this.size_x_cells,i);
+			new_tier.generate_detail(this.tier_window_join_type, this.tier_window_size_x, this.tier_window_size_y, this.tier_partition_type);
 
 			this.tiers.push(new_tier);
 		}
@@ -183,6 +224,82 @@ var Building = {
 	},
 };
 
+var TierPartition = {
+
+	size_x:0,
+	size_y:0,
+	window_size_x: 0,
+	window_size_y: 0,
+	bb_x: 0,
+	bb_y: 0,
+	window_type: 0,
+
+	window_h_count: 0,
+	window_v_count: 0,
+
+	generate: function(size_x,size_y,window_size_x,window_size_y,window_type) {
+		this.size_x=size_x;
+		this.size_y=size_y;
+		this.window_size_x=window_size_x;
+		this.window_size_y=window_size_y;
+		this.window_type=window_type;
+
+		// figure out how many windows this can fit
+		// includes borders, therefore bb = bounding box
+		var bb_x = window_size_x;
+		var bb_y = window_size_y;
+		if (window_type==1) { // seperate - borders both sides
+			bb_x += 1;
+			bb_y += 1;
+		} else if (window_type == 2) { // doubles - one border every 2 windows
+			bb_x += 0.5;
+			bb_y += 1;
+		} else if (window_type == 3) { // continuous, only border on bottom
+			bb_y += 1;
+		} else if (window_type == 4 || window_type == 5) { // quads, one border every 2 in both directions
+			bb_x += 0.5;
+			bb_y += 0.5;
+		}
+
+		this.bb_x = bb_x;
+		this.bb_y = bb_y;
+		this.window_h_count = Math.floor((size_x - 2) / bb_x);
+		this.window_v_count = Math.floor((size_y - 2) / bb_y);
+	},
+
+	render: function(surface, x_corner, y_corner) {
+		console.log(this.window_h_count, this.window_v_count, this.window_type);
+		var start_x = x_corner + Game.cell_size;
+		var start_y = y_corner + Game.cell_size;
+		for (var i = 0; i < this.window_h_count; i++) {
+			for (var j = 0; j < this.window_v_count; j++) {
+				var x_origin = start_x;
+				var y_origin = start_y;
+				if (this.window_type==1) { // seperate - borders both sides
+					x_origin += (i * (this.window_size_x + 1)) * Game.cell_size;
+					y_origin += (j * (this.window_size_y + 1)) * Game.cell_size;
+				} else if (this.window_type == 2) { // doubles - one border every 2 windows
+					x_origin += Math.floor(i * this.bb_x) * Game.cell_size;
+					y_origin += (j * (this.window_size_y + 1)) * Game.cell_size;
+				} else if (this.window_type == 3) { // continuous, only border on bottom
+					x_origin += Math.floor(i * this.bb_x) * Game.cell_size;
+					y_origin += (j * (this.window_size_y + 1)) * Game.cell_size;
+				} else if (this.window_type == 4 || this.window_type == 5) { // quads, one border every 2 in both directions
+					x_origin += Math.floor(i * this.bb_x) * Game.cell_size;
+					y_origin += Math.floor(j * this.bb_y) * Game.cell_size;
+				}
+
+				surface.beginPath();
+				surface.rect(x_origin, y_origin, this.window_size_x * Game.cell_size, this.window_size_y * Game.cell_size);
+				surface.fillStyle = 'rgb('+RNGRules.rng(220, 255)+','+RNGRules.rng(185, 200)+','+RNGRules.rng(0, 10)+')';
+				surface.fill();    
+				surface.closePath();
+		 	}
+		 }
+
+	},
+};
+
 var BuildingTier = {
 
 	cells_x:0,
@@ -192,6 +309,9 @@ var BuildingTier = {
 	frame_width:0,
 	level:0,
 
+	partitions: [],
+	partition_type: 0,
+
 	generate: function(cells_x, cells_y, frame_width, level) {
 		this.cells_x = cells_x;
 		this.cells_y = cells_y;
@@ -199,6 +319,24 @@ var BuildingTier = {
 		this.size_y = cells_y * Game.cell_size;
 		this.frame_width = frame_width * Game.cell_size;
 		this.level = level;
+	},
+
+	generate_detail(window_type,window_size_x,window_size_y,partition_type) {
+		var window_modify = RNGRules.select('window_modify');
+		if (window_modify == 2) { window_size_x += 1; }
+		if (window_modify == 3) { window_size_x -= 1; }
+
+		var window_modify = RNGRules.select('window_modify');
+		if (window_modify == 2) { window_size_y += 1; }
+		if (window_modify == 3) { window_size_y -= 1; }
+
+		this.partition_type = partition_type;
+		if (this.partition_type == 1) {
+			var new_partition = Object.assign({}, TierPartition);
+			new_partition.generate(this.cells_x,this.cells_y,window_size_x,window_size_y,window_type);
+			this.partitions.push(new_partition);
+		}
+
 	},
 
 	set_v_size: function(cells_y) {
@@ -223,21 +361,27 @@ var BuildingTier = {
 		surface.fill();    
 		surface.closePath();
 
-		surface.strokeStyle = 'rgb(255,0,0)';
-		for (var i = 0; i < this.cells_x; i++) {
-			for (var j = 0; j < this.cells_y; j++) {
-				// grid line bottom
-				surface.beginPath();
-				surface.moveTo(x_start + (i * Game.cell_size), y_start + (j * Game.cell_size) + Game.cell_size);
-				surface.lineTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) + Game.cell_size);
-				surface.closePath();
-				surface.stroke();
+		if (this.partition_type == 1) {
+			this.partitions[0].render(surface,x_start,y_start);
+		}
 
-				surface.beginPath();
-				surface.moveTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size));
-				surface.lineTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) + Game.cell_size);
-				surface.closePath();
-				surface.stroke();
+		if (Game.debug_grid) {
+			surface.strokeStyle = 'rgb(255,255,255)';
+			for (var i = 0; i < this.cells_x; i++) {
+				for (var j = 0; j < this.cells_y; j++) {
+					// grid line bottom
+					surface.beginPath();
+					surface.moveTo(x_start + (i * Game.cell_size), y_start + (j * Game.cell_size) + Game.cell_size);
+					surface.lineTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) + Game.cell_size);
+					surface.closePath();
+					surface.stroke();
+
+					surface.beginPath();
+					surface.moveTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size));
+					surface.lineTo(x_start + (i * Game.cell_size) + Game.cell_size, y_start + (j * Game.cell_size) + Game.cell_size);
+					surface.closePath();
+					surface.stroke();
+				}
 			}
 		}
 
@@ -247,7 +391,8 @@ var BuildingTier = {
 };
 
 Game.init();
-
+/*
 setInterval(function() {
 	Game.tick();
 }, 100);
+*/
