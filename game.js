@@ -156,7 +156,7 @@ var Building = {
 
 		var available_vertical_cells = cells_y;
 		var prev_size = this.size_x_cells;
-		for (i = 0; i < this.tier_count; i++) {
+		for (var i = 0; i < this.tier_count; i++) {
 			// clone
 			var new_tier = Object.assign({}, BuildingTier); 
 
@@ -204,8 +204,6 @@ var Building = {
 			}
 
 			new_tier.generate(h_size,v_size,this.size_x_cells,i);
-			new_tier.generate_detail(this.tier_window_join_type, this.tier_window_size_x, this.tier_window_size_y, this.tier_partition_type);
-
 			this.tiers.push(new_tier);
 		}
 
@@ -213,11 +211,15 @@ var Building = {
 			this.tiers[0].set_v_size(this.tiers[0].cells_y+available_vertical_cells);
 		}
 
+		for (var i = 0; i < this.tier_count; i++) {
+			this.tiers[i].generate_detail(this.tier_window_join_type, this.tier_window_size_x, this.tier_window_size_y, this.tier_partition_type);
+		}
+
 	},
 
 	render: function(surface, x, y) {
 		var vert_base = y;
-		for (i = 0; i < this.tier_count; i++) {
+		for (var i = 0; i < this.tier_count; i++) {
 			this.tiers[i].render(surface,x,vert_base);
 			vert_base += this.tiers[i].size_y;
 		}
@@ -291,7 +293,7 @@ var TierPartition = {
 
 				surface.beginPath();
 				surface.rect(x_origin, y_origin, this.window_size_x * Game.cell_size, this.window_size_y * Game.cell_size);
-				surface.fillStyle = 'rgb('+RNGRules.rng(220, 255)+','+RNGRules.rng(185, 200)+','+RNGRules.rng(0, 10)+')';
+				surface.fillStyle = 'rgb('+RNGRules.rng(50, 255)+','+RNGRules.rng(185, 200)+','+RNGRules.rng(0, 10)+')';
 				surface.fill();    
 				surface.closePath();
 		 	}
@@ -322,6 +324,8 @@ var BuildingTier = {
 	},
 
 	generate_detail(window_type,window_size_x,window_size_y,partition_type) {
+		this.partitions = [];
+
 		var window_modify = RNGRules.select('window_modify');
 		if (window_modify == 2) { window_size_x += 1; }
 		if (window_modify == 3) { window_size_x -= 1; }
