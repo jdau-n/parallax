@@ -149,7 +149,14 @@ var Game = {
 
 		test_building = Building;
 		test_building.generate(35,50);
-		test_building.render(this.display_surface, 0, 0);
+
+		var bg_gradient = this.display_surface.createLinearGradient(0,0,500,0);
+		bg_gradient.addColorStop(0, '#e29aad');
+		bg_gradient.addColorStop(1, '#fbb99e');
+		this.display_surface.fillStyle = bg_gradient;
+		this.display_surface.fillRect(0,0,500,500);
+
+		test_building.render(this.display_surface, 150, 0);
 	},
 
 	tick: function() {
@@ -353,7 +360,7 @@ var TierPartition = {
 				if (RNGRules.rng(0,10) == 3) {
 					surface.fillStyle = 'rgb('+RNGRules.rng(200,220)+','+RNGRules.rng(200,220)+','+RNGRules.rng(0, 30)+')';
 				} else {
-					surface.fillStyle = 'rgb('+RNGRules.rng(0, 5)+','+RNGRules.rng(0, 10)+','+RNGRules.rng(0, 30)+')';
+					surface.fillStyle = 'rgb('+RNGRules.rng(20, 25)+','+RNGRules.rng(20, 23)+','+RNGRules.rng(10,20)+')';
 				}
 				surface.fill();    
 				surface.closePath();
@@ -411,17 +418,17 @@ var BuildingTier = {
 
 	render: function(surface, x, y) {
 		// this is rendered from the bottom left instead of the top left, so y needs to be inverted
-		var x_start = (this.frame_width - this.size_x) / 2;
+		var x_start = x+((this.frame_width - this.size_x) / 2);
 		var y_start = surface.canvas.clientHeight - this.size_y - y;
 
 		surface.beginPath();
 		surface.rect(x_start, y_start, this.size_x, this.size_y);
 		if (this.level == 0) {
-			surface.fillStyle = 'rgb(120,100,100)';
+			surface.fillStyle = 'rgb(7,20,22)';
 		} else if (this.level == 1) {
-			surface.fillStyle = 'rgb(130,120,100)';
+			surface.fillStyle = 'rgb(10,22,22)';
 		} else if (this.level == 2) {
-			surface.fillStyle = 'rgb(140,130,160)';
+			surface.fillStyle = 'rgb(12,22,22)';
 		}
 		surface.fill();    
 		surface.closePath();
