@@ -98,7 +98,7 @@ var RNGRules = {
 
 var Game = {
 
-	debug_grid: false,
+	debug_grid: true,
 
 	cell_size: 8,
 
@@ -239,6 +239,8 @@ var TierPartition = {
 	window_h_count: 0,
 	window_v_count: 0,
 
+	window_h_variation: false,
+
 	generate: function(size_x,size_y,window_size_x,window_size_y,window_type) {
 		this.size_x=size_x;
 		this.size_y=size_y;
@@ -267,6 +269,19 @@ var TierPartition = {
 		this.bb_y = bb_y;
 		this.window_h_count = Math.floor((size_x - 2) / bb_x);
 		this.window_v_count = Math.floor((size_y - 2) / bb_y);
+
+		// if the vertical count is odd and the windows are vertically joined, remove 1 set to make it clean
+		if (this.window_v_count % 2 !== 0 && (window_type == 4 || window_type == 5)) { this.window_v_count -= 1; }
+
+		// // if the horizontal count is odd and windows are horizontally joined, decide on a variation
+		// // false = remove one window and create a gap in the middle
+		// // true = move the thin window to the centre
+		// if (this.window_h_count % 2 !== 0 && window_type > 1) {
+		// 	this.window_h_variation = (RNGRules.rng(0,1) === 1);
+		// 	if (!this.window_h_variation) {
+		// 		this.window_h_count -= 1;
+		// 	}
+		// }
 	},
 
 	render: function(surface, x_corner, y_corner) {
@@ -277,6 +292,11 @@ var TierPartition = {
 			for (var j = 0; j < this.window_v_count; j++) {
 				var x_origin = start_x;
 				var y_origin = start_y;
+
+				var halfway_margin = 0;
+				
+				console.log("misaligned row",this.size_x,this.bb_x, this.size_x-(this.bb_x*this.window_h_count));
+
 				if (this.window_type==1) { // seperate - borders both sides
 					x_origin += (i * (this.window_size_x + 1)) * Game.cell_size;
 					y_origin += (j * (this.window_size_y + 1)) * Game.cell_size;
@@ -290,6 +310,7 @@ var TierPartition = {
 					x_origin += Math.floor(i * this.bb_x) * Game.cell_size;
 					y_origin += Math.floor(j * this.bb_y) * Game.cell_size;
 				}
+				x_origin += halfway_margin;
 
 				surface.beginPath();
 				surface.rect(x_origin, y_origin, this.window_size_x * Game.cell_size, this.window_size_y * Game.cell_size);
@@ -370,7 +391,7 @@ var BuildingTier = {
 		}
 
 		if (Game.debug_grid) {
-			surface.strokeStyle = 'rgb(255,255,255)';
+			surface.strokeStyle = 'rgb(0,0,0)';
 			for (var i = 0; i < this.cells_x; i++) {
 				for (var j = 0; j < this.cells_y; j++) {
 					// grid line bottom
