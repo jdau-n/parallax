@@ -1,3 +1,40 @@
+var PatternDefs = {
+
+	Windows: {
+		1: {
+			'margin_x': 1,
+			'margin_y': 1,
+			'join_x': false,
+			'join_y': false
+		},
+		2: {
+			'margin_x': 0.5,
+			'margin_y': 1,
+			'join_x': 'single',
+			'join_y': false
+		},
+		3: {
+			'margin_x': 0,
+			'margin_y': 1,
+			'join_x': 'continuous',
+			'join_y': false
+		},
+		4: {
+			'margin_x': 0.5,
+			'margin_y': 0.5,
+			'join_x': 'single',
+			'join_y': 'single'
+		},
+		5: {
+			'margin_x': 0.5,
+			'margin_y': 0.5,
+			'join_x': 'single',
+			'join_y': 'single'
+		},
+	},
+}
+
+
 var RNGRules = {
 
 	// weights should all be integers
@@ -98,7 +135,7 @@ var RNGRules = {
 
 var Game = {
 
-	debug_grid: true,
+	debug_grid: false,
 
 	cell_size: 8,
 
@@ -250,20 +287,8 @@ var TierPartition = {
 
 		// figure out how many windows this can fit
 		// includes borders, therefore bb = bounding box
-		var bb_x = window_size_x;
-		var bb_y = window_size_y;
-		if (window_type==1) { // seperate - borders both sides
-			bb_x += 1;
-			bb_y += 1;
-		} else if (window_type == 2) { // doubles - one border every 2 windows
-			bb_x += 0.5;
-			bb_y += 1;
-		} else if (window_type == 3) { // continuous, only border on bottom
-			bb_y += 1;
-		} else if (window_type == 4 || window_type == 5) { // quads, one border every 2 in both directions
-			bb_x += 0.5;
-			bb_y += 0.5;
-		}
+		var bb_x = window_size_x + PatternDefs.Windows[window_type].margin_x;
+		var bb_y = window_size_y + PatternDefs.Windows[window_type].margin_y;
 
 		this.bb_x = bb_x;
 		this.bb_y = bb_y;
@@ -272,6 +297,7 @@ var TierPartition = {
 
 		// if the vertical count is odd and the windows are vertically joined, remove 1 set to make it clean
 		if (this.window_v_count % 2 !== 0 && (window_type == 4 || window_type == 5)) { this.window_v_count -= 1; }
+		if (this.window_h_count % 2 !== 0) { this.window_h_count -= 1; }
 
 		// // if the horizontal count is odd and windows are horizontally joined, decide on a variation
 		// // false = remove one window and create a gap in the middle
@@ -288,33 +314,47 @@ var TierPartition = {
 		console.log(this.window_h_count, this.window_v_count, this.window_type);
 		var start_x = x_corner + Game.cell_size;
 		var start_y = y_corner + Game.cell_size;
+
+		// outer border of tiles are the margin
+		// how many tiles are spare at the end of the row
+		// is it a horizontal join type? if so margin is only if there is double
+		var margin = 0;
+		var unjoin = false;
+		if (PatternDefs.Windows[this.window_type].join_x == 'single') {
+			if (this.window_h_count % 2 == 0) {
+				margin = 1;
+			} else {
+				unjoin = true;
+			}
+		} else if (!PatternDefs.Windows[this.window_type].join_x) { // if no join, there is a margin
+			margin = 1;
+		}
+
+		var free_cells = Math.ceil((this.size_x-2) - ((this.window_h_count * this.bb_x) - margin))-1;
+		console.log('free',free_cells);
+		var free_cell_inc = Math.floor(this.window_h_count / free_cells);
+
+
 		for (var i = 0; i < this.window_h_count; i++) {
 			for (var j = 0; j < this.window_v_count; j++) {
 				var x_origin = start_x;
 				var y_origin = start_y;
 
-				var halfway_margin = 0;
-				
-				console.log("misaligned row",this.size_x,this.bb_x, this.size_x-(this.bb_x*this.window_h_count));
+				var offset = 0;
+				var halfway_point = Math.floor(this.window_h_count / 2) + 1;
 
-				if (this.window_type==1) { // seperate - borders both sides
-					x_origin += (i * (this.window_size_x + 1)) * Game.cell_size;
-					y_origin += (j * (this.window_size_y + 1)) * Game.cell_size;
-				} else if (this.window_type == 2) { // doubles - one border every 2 windows
-					x_origin += Math.floor(i * this.bb_x) * Game.cell_size;
-					y_origin += (j * (this.window_size_y + 1)) * Game.cell_size;
-				} else if (this.window_type == 3) { // continuous, only border on bottom
-					x_origin += Math.floor(i * this.bb_x) * Game.cell_size;
-					y_origin += (j * (this.window_size_y + 1)) * Game.cell_size;
-				} else if (this.window_type == 4 || this.window_type == 5) { // quads, one border every 2 in both directions
-					x_origin += Math.floor(i * this.bb_x) * Game.cell_size;
-					y_origin += Math.floor(j * this.bb_y) * Game.cell_size;
-				}
-				x_origin += halfway_margin;
+				x_origin += Math.floor(i * this.bb_x + offset) * Game.cell_size;
+				y_origin += Math.floor(j * this.bb_y) * Game.cell_size;
+				
+				//x_origin += halfway_margin;
 
 				surface.beginPath();
 				surface.rect(x_origin, y_origin, this.window_size_x * Game.cell_size, this.window_size_y * Game.cell_size);
-				surface.fillStyle = 'rgb('+RNGRules.rng(50, 255)+','+RNGRules.rng(185, 200)+','+RNGRules.rng(0, 10)+')';
+				if (RNGRules.rng(0,10) == 3) {
+					surface.fillStyle = 'rgb('+RNGRules.rng(200,220)+','+RNGRules.rng(200,220)+','+RNGRules.rng(0, 30)+')';
+				} else {
+					surface.fillStyle = 'rgb('+RNGRules.rng(0, 5)+','+RNGRules.rng(0, 10)+','+RNGRules.rng(0, 30)+')';
+				}
 				surface.fill();    
 				surface.closePath();
 		 	}
@@ -377,11 +417,11 @@ var BuildingTier = {
 		surface.beginPath();
 		surface.rect(x_start, y_start, this.size_x, this.size_y);
 		if (this.level == 0) {
-			surface.fillStyle = 'rgb(100,100,200)';
+			surface.fillStyle = 'rgb(120,100,100)';
 		} else if (this.level == 1) {
-			surface.fillStyle = 'rgb(100,200,100)';
+			surface.fillStyle = 'rgb(130,120,100)';
 		} else if (this.level == 2) {
-			surface.fillStyle = 'rgb(200,100,100)';
+			surface.fillStyle = 'rgb(140,130,160)';
 		}
 		surface.fill();    
 		surface.closePath();
