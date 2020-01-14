@@ -26,7 +26,13 @@ var RNGRules = {
 		// 1: uniform
 		// 2: single division
 		// 3: centred partition
-		'partition_type': {1:4,2:0,3:0}
+		'partition_type': {1:4,2:0,3:0},
+
+		// 1: right align
+		// 2: left align
+		// 3: middle column
+		// 4: centre 
+		'window_align_type': {1:1,2:1,3:3,4:4}
 	},
 
 	range_defs: {

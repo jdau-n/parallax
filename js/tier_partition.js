@@ -11,14 +11,15 @@ var TierPartition = {
 	window_h_count: 0,
 	window_v_count: 0,
 
-	window_h_variation: false,
+	window_align_type: 3,
 
-	generate: function(size_x,size_y,window_size_x,window_size_y,window_type) {
+	generate: function(size_x,size_y,window_size_x,window_size_y,window_type,window_align_type) {
 		this.size_x=size_x;
 		this.size_y=size_y;
 		this.window_size_x=window_size_x;
 		this.window_size_y=window_size_y;
 		this.window_type=window_type;
+		this.window_align_type=window_align_type;
 
 		// figure out how many windows this can fit
 		// includes borders, therefore bb = bounding box
@@ -28,21 +29,10 @@ var TierPartition = {
 		this.bb_x = bb_x;
 		this.bb_y = bb_y;
 		this.window_h_count = Math.floor((size_x - 2) / bb_x);
-		this.window_v_count = Math.floor((size_y - 2) / bb_y);
+		this.window_v_count = Math.floor((size_y - 1) / bb_y);
 
 		// if the vertical count is odd and the windows are vertically joined, remove 1 set to make it clean
 		if (this.window_v_count % 2 !== 0 && (window_type == 4 || window_type == 5)) { this.window_v_count -= 1; }
-		if (this.window_h_count % 2 !== 0) { this.window_h_count -= 1; }
-
-		// // if the horizontal count is odd and windows are horizontally joined, decide on a variation
-		// // false = remove one window and create a gap in the middle
-		// // true = move the thin window to the centre
-		// if (this.window_h_count % 2 !== 0 && window_type > 1) {
-		// 	this.window_h_variation = (RNGRules.rng(0,1) === 1);
-		// 	if (!this.window_h_variation) {
-		// 		this.window_h_count -= 1;
-		// 	}
-		// }
 	},
 
 	render: function(surface, x_corner, y_corner) {
@@ -65,23 +55,35 @@ var TierPartition = {
 			margin = 1;
 		}
 
-		var free_cells = Math.ceil((this.size_x-2) - ((this.window_h_count * this.bb_x) - margin))-1;
+		var free_cells = Math.ceil((this.size_x-2) - ((this.window_h_count * this.bb_x) - margin));
 		console.log('free',free_cells);
-		var free_cell_inc = Math.floor(this.window_h_count / free_cells);
 
+		var align_position = 0;
+		var align_distance = free_cells;
+
+		var align_position_2 = 0;
+		var align_distance_2 = 0;
+		// align mode 1 is right-align, or position 0
+		if (this.window_align_type == 2) { // left-align, don't do anything
+			align_distance = 0;
+		} else if (this.window_align_type == 3) { // centre column
+			align_position = Math.ceil(this.window_h_count / 2);
+			if (this.window_h_count % 2 == 1) {
+				align_position_2 = Math.floor(this.window_h_count / 2)+1;
+				align_distance = align_distance_2 = Math.floor(free_cells/2);
+			}
+		}
 
 		for (var i = 0; i < this.window_h_count; i++) {
 			for (var j = 0; j < this.window_v_count; j++) {
 				var x_origin = start_x;
 				var y_origin = start_y;
 
-				var offset = 0;
-				var halfway_point = Math.floor(this.window_h_count / 2) + 1;
-
-				x_origin += Math.floor(i * this.bb_x + offset) * Game.cell_size;
+				x_origin += Math.floor(i * this.bb_x) * Game.cell_size;
 				y_origin += Math.floor(j * this.bb_y) * Game.cell_size;
 				
-				//x_origin += halfway_margin;
+				if (i >= align_position) { x_origin += Math.floor(align_distance * Game.cell_size); }
+				if (i >= align_position_2) { x_origin += Math.floor(align_distance_2 * Game.cell_size); }
 
 				surface.beginPath();
 				surface.rect(x_origin, y_origin, this.window_size_x * Game.cell_size, this.window_size_y * Game.cell_size);

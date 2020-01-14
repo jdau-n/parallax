@@ -12,6 +12,10 @@ var Game = {
 		this.display_canvas = document.getElementById('main-canvas');
 		this.display_surface = document.getElementById('main-canvas').getContext('2d');
 
+		var layer_canvas = document.createElement('canvas');
+		layer_canvas.height = 8*34;
+		layer_canvas.width = 8*300;
+
 		test_building = Building;
 		test_building.generate(36,52);
 

@@ -14,6 +14,7 @@ var Building = {
 	tier_window_size_x: 0,
 	tier_window_size_y: 0,
 	tier_partition_type: 0,
+	tier_align_type: 0,
 
 	generate: function(cells_x, cells_y) {
 
@@ -30,6 +31,7 @@ var Building = {
 		this.tier_window_size_x = RNGRules.rng_rule('l1_window_size');
 		this.tier_window_size_y = RNGRules.rng_rule('l1_window_size');
 		this.tier_partition_type = RNGRules.select('partition_type');
+		this.tier_align_type = RNGRules.select('window_align_type');
 
 		var available_vertical_cells = cells_y;
 		var prev_size = this.size_x_cells;
@@ -89,7 +91,7 @@ var Building = {
 		}
 
 		for (var i = 0; i < this.tier_count; i++) {
-			this.tiers[i].generate_detail(this.tier_window_join_type, this.tier_window_size_x, this.tier_window_size_y, this.tier_partition_type);
+			this.tiers[i].generate_detail(this.tier_window_join_type, this.tier_window_size_x, this.tier_window_size_y, this.tier_partition_type, this.tier_align_type);
 		}
 
 	},

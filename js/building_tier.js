@@ -19,7 +19,7 @@ var BuildingTier = {
 		this.level = level;
 	},
 
-	generate_detail(window_type,window_size_x,window_size_y,partition_type) {
+	generate_detail(window_type,window_size_x,window_size_y,partition_type,window_align_type) {
 		this.partitions = [];
 
 		var window_modify = RNGRules.select('window_modify');
@@ -33,7 +33,7 @@ var BuildingTier = {
 		this.partition_type = partition_type;
 		if (this.partition_type == 1) {
 			var new_partition = Object.assign({}, TierPartition);
-			new_partition.generate(this.cells_x,this.cells_y,window_size_x,window_size_y,window_type);
+			new_partition.generate(this.cells_x,this.cells_y,window_size_x,window_size_y,window_type,window_align_type);
 			this.partitions.push(new_partition);
 		}
 
